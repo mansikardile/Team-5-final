@@ -17,6 +17,7 @@ import {
   ArrowRight,
   ShieldCheck,
   LogOut,
+  Calendar,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -25,6 +26,54 @@ interface VolunteerFeedbackModalProps {
   onClose: () => void;
   defaultActivityCode?: string;
 }
+
+const UI_TEXT = {
+  en: {
+    title: 'Volunteer Feedback',
+    selectEvent: 'Select Volunteering Drive / Event *',
+    ratingLabel: '1. Overall Rating Out of 5 *',
+    expLabel: '2. Volunteering Experience (Key Highlights) *',
+    expPlaceholder: 'Describe your volunteering experience (or tap 🎙️ to speak)...',
+    suggLabel: '3. Suggestions for Future Drives (Optional)',
+    suggPlaceholder: 'Ideas or suggestions for future drives (or tap 🎙️ to speak)...',
+    sttButton: '🎙️ Tap to Speak (STT)',
+    listening: 'Listening...',
+    submitBtn: 'Submit Verified Feedback',
+    submittingBtn: 'Submitting & Translating via Gemini...',
+    switchAccount: 'Switch Account',
+    accountLabel: 'Authenticated Volunteer:',
+  },
+  hi: {
+    title: 'स्वयंसेवक अभिप्राय (Volunteer Feedback)',
+    selectEvent: 'उपक्रम / ड्राईव्ह निवडा (Select Event) *',
+    ratingLabel: '१. एकंदरीत रेटिंग (५ पैकी) *',
+    expLabel: '२. स्वयंसेवा अनुभव (प्रमुख वैशिष्ट्ये) *',
+    expPlaceholder: 'आपला स्वयंसेवा अनुभव लिहा किंवा 🎙️ दाबून बोला (बोलून टाईप करा)...',
+    suggLabel: '३. भविष्यतील उपक्रमांसाठी सूचना (पर्यायी)',
+    suggPlaceholder: 'भविष्यतील उपक्रमांसाठी आपल्या सूचना लिहा किंवा 🎙️ दाबून बोला...',
+    sttButton: '🎙️ बोलून टाईप करा (STT)',
+    listening: 'ऐकत आहे...',
+    submitBtn: 'अभिप्राय सबमिट करा',
+    submittingBtn: 'सबमिट होत आहे व भाषांतर चालू आहे...',
+    switchAccount: 'खाते बदला',
+    accountLabel: 'प्रमाणित स्वयंसेवक खाते:',
+  },
+  mr: {
+    title: 'स्वयंसेवक अभिप्राय (Volunteer Feedback)',
+    selectEvent: 'उपक्रम / ड्राईव्ह निवडा (Select Event) *',
+    ratingLabel: '१. एकूण रेटिंग (५ पैकी) *',
+    expLabel: '२. स्वयंसेवा अनुभव (प्रमुख वैशिष्ट्ये) *',
+    expPlaceholder: 'तुमचा स्वयंसेवा अनुभव लिहा किंवा 🎙️ दाबून बोला (बोलून टाईप करा)...',
+    suggLabel: '३. पुढील उपक्रमांसाठी सूचना (पर्यायी)',
+    suggPlaceholder: 'पुढील उपक्रमांसाठी तुमच्या सूचना लिहा किंवा 🎙️ दाबून बोला...',
+    sttButton: '🎙️ बोलून टाईप करा (STT)',
+    listening: 'ऐकत आहे...',
+    submitBtn: 'अभिप्राय सबमिट करा',
+    submittingBtn: 'सबमिट होत आहे व जेमिनी भाषांतर चालू आहे...',
+    switchAccount: 'खाते बदला',
+    accountLabel: 'प्रमाणित स्वयंसेवक खाते:',
+  },
+};
 
 export default function VolunteerFeedbackModal({
   isOpen,
@@ -36,6 +85,13 @@ export default function VolunteerFeedbackModal({
 
   const [language, setLanguage] = useState<'en' | 'hi' | 'mr'>('en');
   const [activityCode, setActivityCode] = useState(defaultActivityCode);
+  const [eventsList, setEventsList] = useState<Array<{ code: string; title: string; partner: string }>>([
+    { code: 'SEVA-PUNE-KIT-01', title: 'Samutkarsh: 500 School Kits Assembly & Distribution', partner: 'Mastercard India' },
+    { code: 'SEVA-MUM-DIGI-02', title: 'Digital Literacy & Coding Lab for Municipal School', partner: 'Barclays Mumbai' },
+    { code: 'SEVA-PUNE-TREE-03', title: 'Punarvas: Urban Micro-Forest Plantation & Seed Balls', partner: 'TCS Pune' },
+    { code: 'SEVA-NSK-TRIBAL-04', title: 'Vanyashala: Solar Study Lamp Assembly for Tribal Hamlets', partner: 'Cummins India' },
+  ]);
+
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [experience, setExperience] = useState('');
@@ -46,7 +102,7 @@ export default function VolunteerFeedbackModal({
   const [isRecordingSugg, setIsRecordingSugg] = useState(false);
   const [sttSupported, setSttSupported] = useState(false);
 
-  // OTP Login State (Strict Login Enforcement)
+  // OTP Login State
   const [isOtpStep, setIsOtpStep] = useState(true);
   const [emailOrPhone, setEmailOrPhone] = useState('aniket.d@mastercard.com');
   const [otpInput, setOtpInput] = useState('');
@@ -57,9 +113,10 @@ export default function VolunteerFeedbackModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submittedData, setSubmittedData] = useState<any | null>(null);
 
+  const t = UI_TEXT[language] || UI_TEXT.en;
+
   useEffect(() => {
     if (isOpen) {
-      // RESET FORM & SUBMISSION STATE WHEN MODAL OPENS
       setSubmittedData(null);
       setErrorMessage(null);
       setExperience('');
@@ -70,13 +127,13 @@ export default function VolunteerFeedbackModal({
         setActivityCode(defaultActivityCode);
       }
 
-      const t = localStorage.getItem('katalyst_student_token');
-      const u = localStorage.getItem('katalyst_student_user');
-      if (t && u) {
-        setToken(t);
+      const tok = localStorage.getItem('katalyst_student_token');
+      const usr = localStorage.getItem('katalyst_student_user');
+      if (tok && usr) {
+        setToken(tok);
         try {
-          setUser(JSON.parse(u));
-          setIsOtpStep(false); // Valid token present
+          setUser(JSON.parse(usr));
+          setIsOtpStep(false);
         } catch (e) {
           setToken(null);
           setUser(null);
@@ -85,8 +142,21 @@ export default function VolunteerFeedbackModal({
       } else {
         setToken(null);
         setUser(null);
-        setIsOtpStep(true); // Mandatory OTP Login Step
+        setIsOtpStep(true);
       }
+
+      // Fetch live events list from backend
+      api.get('/events').then((res) => {
+        if (res.data?.data && res.data.data.length > 0) {
+          setEventsList(
+            res.data.data.map((e: any) => ({
+              code: e.code,
+              title: e.title,
+              partner: e.partner || e.collegeName || 'SevaSahayog Drive',
+            }))
+          );
+        }
+      }).catch((e) => console.warn('Events fetch fallback active'));
     }
 
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -136,7 +206,7 @@ export default function VolunteerFeedbackModal({
     }
   };
 
-  // Web Speech API Voice Recognition (STT)
+  // Speech-to-Text (STT) Handler
   const startSpeechRecognition = (targetField: 'experience' | 'suggestion') => {
     if (typeof window === 'undefined') return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -228,9 +298,9 @@ export default function VolunteerFeedbackModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fade-in font-sans">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header Ribbon */}
-        <div className="p-6 bg-gradient-to-r from-[#0f2b5c] via-blue-900 to-[#091b3b] text-white relative">
+        <div className="p-6 bg-gradient-to-r from-[#0f2b5c] via-blue-900 to-[#091b3b] text-white relative shrink-0">
           <button
             onClick={onClose}
             className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
@@ -239,14 +309,13 @@ export default function VolunteerFeedbackModal({
           </button>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-sky-200 text-xs font-bold mb-2">
             <Sparkles className="w-3.5 h-3.5 text-sky-300" />
-            <span>Speech-to-Text &amp; Gemini AI Enabled</span>
+            <span>Speech-to-Text &amp; Gemini AI Multilingual</span>
           </div>
-          <h3 className="text-xl font-black text-white">Volunteer Feedback</h3>
-          <p className="text-xs text-sky-100 font-mono mt-0.5">Activity: {activityCode}</p>
+          <h3 className="text-xl font-black text-white">{t.title}</h3>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-4 text-xs">
+        <div className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
           {/* STRICT MANDATORY LOGIN STEP IF NO TOKEN OR OTP STEP ACTIVE */}
           {!token || isOtpStep ? (
             <div className="text-center py-4 space-y-4 animate-fade-in">
@@ -293,7 +362,7 @@ export default function VolunteerFeedbackModal({
                 <button
                   type="button"
                   onClick={handleRequestOtp}
-                  className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs"
+                  className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs cursor-pointer"
                 >
                   Send 6-Digit Email OTP
                 </button>
@@ -304,7 +373,7 @@ export default function VolunteerFeedbackModal({
                     type="text"
                     value={otpInput}
                     onChange={(e) => setOtpInput(e.target.value)}
-                    placeholder="Enter 6-digit code"
+                    placeholder="Enter 6-digit code (e.g. 123456)"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-mono font-bold text-center text-base tracking-widest text-slate-900"
                   />
                 </div>
@@ -321,17 +390,17 @@ export default function VolunteerFeedbackModal({
           ) : !submittedData ? (
             /* AUTHENTICATED FEEDBACK FORM */
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Multilingual Selector */}
-              <div className="flex items-center justify-between bg-slate-100 p-1.5 rounded-2xl">
+              {/* MULTILINGUAL LANGUAGE SELECTOR */}
+              <div className="flex items-center justify-between bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
                 <span className="font-bold text-slate-600 px-2 flex items-center gap-1">
-                  <Globe className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Language:</span>
+                  <Globe className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Select Language:</span>
                 </span>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setLanguage('en')}
-                    className={`px-3 py-1 rounded-xl font-bold transition-all ${
+                    className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
                       language === 'en' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-600'
                     }`}
                   >
@@ -340,7 +409,7 @@ export default function VolunteerFeedbackModal({
                   <button
                     type="button"
                     onClick={() => setLanguage('hi')}
-                    className={`px-3 py-1 rounded-xl font-bold transition-all ${
+                    className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
                       language === 'hi' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-600'
                     }`}
                   >
@@ -349,7 +418,7 @@ export default function VolunteerFeedbackModal({
                   <button
                     type="button"
                     onClick={() => setLanguage('mr')}
-                    className={`px-3 py-1 rounded-xl font-bold transition-all ${
+                    className={`px-3 py-1 rounded-xl font-bold transition-all cursor-pointer ${
                       language === 'mr' ? 'bg-white text-blue-900 shadow-sm' : 'text-slate-600'
                     }`}
                   >
@@ -368,7 +437,7 @@ export default function VolunteerFeedbackModal({
               {/* Logged in Volunteer Account & Switch Account Button */}
               <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 block">Authenticated Account:</span>
+                  <span className="text-[10px] text-slate-400 block">{t.accountLabel}</span>
                   <span className="font-bold text-blue-950">
                     {user?.fullName} ({user?.collegeName || 'Mastercard'})
                   </span>
@@ -380,14 +449,33 @@ export default function VolunteerFeedbackModal({
                   title="Log out and switch account"
                 >
                   <LogOut className="w-3 h-3" />
-                  <span>Switch Account</span>
+                  <span>{t.switchAccount}</span>
                 </button>
               </div>
 
-              {/* Rating */}
+              {/* FEATURE 1: SELECT VOLUNTEERING DRIVE / EVENT DROPDOWN */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-blue-700" />
+                  <span>{t.selectEvent}</span>
+                </label>
+                <select
+                  value={activityCode}
+                  onChange={(e) => setActivityCode(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-bold text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/30"
+                >
+                  {eventsList.map((evt) => (
+                    <option key={evt.code} value={evt.code}>
+                      [{evt.code}] {evt.title} ({evt.partner})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* FEATURE 2: OVERALL RATING */}
               <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-center space-y-1.5">
                 <label className="font-black text-amber-900 block uppercase tracking-wider">
-                  Overall Rating Out of 5 *
+                  {t.ratingLabel}
                 </label>
                 <div className="flex items-center justify-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -411,10 +499,10 @@ export default function VolunteerFeedbackModal({
                 </div>
               </div>
 
-              {/* Experience with STT Voice */}
+              {/* FEATURE 3: EXPERIENCE WITH STT VOICE */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-700">Volunteering Experience *</label>
+                  <label className="font-bold text-slate-700">{t.expLabel}</label>
                   {sttSupported && (
                     <button
                       type="button"
@@ -424,24 +512,24 @@ export default function VolunteerFeedbackModal({
                       }`}
                     >
                       <Mic className="w-3 h-3 text-blue-700" />
-                      <span>{isRecordingExp ? 'Listening...' : '🎙️ Tap to Speak (STT)'}</span>
+                      <span>{isRecordingExp ? t.listening : t.sttButton}</span>
                     </button>
                   )}
                 </div>
                 <textarea
                   value={experience}
                   onChange={(e) => setExperience(e.target.value)}
-                  placeholder="Describe your volunteering experience (or tap 🎙️ to speak)..."
+                  placeholder={t.expPlaceholder}
                   rows={3}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900"
                   required
                 />
               </div>
 
-              {/* Suggestion with STT Voice */}
+              {/* FEATURE 4: SUGGESTIONS WITH STT VOICE */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-700">Suggestions (Optional)</label>
+                  <label className="font-bold text-slate-700">{t.suggLabel}</label>
                   {sttSupported && (
                     <button
                       type="button"
@@ -451,14 +539,14 @@ export default function VolunteerFeedbackModal({
                       }`}
                     >
                       <Mic className="w-3 h-3 text-amber-600" />
-                      <span>{isRecordingSugg ? 'Listening...' : '🎙️ Tap to Speak (STT)'}</span>
+                      <span>{isRecordingSugg ? t.listening : t.sttButton}</span>
                     </button>
                   )}
                 </div>
                 <textarea
                   value={suggestion}
                   onChange={(e) => setSuggestion(e.target.value)}
-                  placeholder="Suggestions for future drives (or tap 🎙️ to speak)..."
+                  placeholder={t.suggPlaceholder}
                   rows={2}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900"
                 />
@@ -469,14 +557,16 @@ export default function VolunteerFeedbackModal({
                 disabled={isSubmitting}
                 className="w-full py-3.5 rounded-2xl bg-[#0f2b5c] text-white font-bold cursor-pointer hover:bg-[#091b3b]"
               >
-                {isSubmitting ? 'Submitting & Translating via Gemini...' : 'Submit Feedback'}
+                {isSubmitting ? t.submittingBtn : t.submitBtn}
               </button>
             </form>
           ) : (
             /* SUBMITTED SUCCESS */
             <div className="text-center py-6 space-y-4">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto animate-bounce" />
-              <h4 className="text-lg font-black text-slate-900">Feedback Submitted &amp; Verified!</h4>
+              <h4 className="text-lg font-black text-slate-900">
+                {language === 'hi' || language === 'mr' ? 'अभिप्राय यशस्वीरीत्या प्राप्त झाला!' : 'Feedback Submitted & Verified!'}
+              </h4>
               <p className="text-xs text-slate-500">
                 Your feedback for <strong className="text-blue-900">{activityCode}</strong> has been translated by Gemini AI and saved to PostgreSQL.
               </p>
