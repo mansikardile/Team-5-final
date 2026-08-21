@@ -117,24 +117,27 @@ export const dispatchEventQrEmails = async (
       take: 20,
     });
 
-    let sentCount = 0;
-    for (const vol of volunteers) {
-      if (vol.email) {
-        await EmailService.sendEventFeedbackInvitation(vol.email, vol.fullName, {
+    const emailPromises = volunteers
+      .filter((vol) => vol.email)
+      .map((vol) =>
+        EmailService.sendEventFeedbackInvitation(vol.email, vol.fullName, {
           code: event.code,
           title: event.title,
           partner: vol.collegeName || event.collegeName || 'Mastercard India',
           date: new Date().toLocaleDateString('en-IN'),
-        });
-        sentCount++;
-      }
-    }
+        })
+      );
+
+    // Run email dispatches in parallel
+    Promise.allSettled(emailPromises).catch((err) =>
+      console.warn('[dispatchEventQrEmails] Background email dispatch notice:', err)
+    );
 
     return res.status(200).json({
       success: true,
-      message: `🎉 Scannable QR Code feedback emails successfully dispatched to ${sentCount} verified corporate volunteers!`,
+      message: `🎉 Scannable QR Code feedback emails successfully dispatched to ${volunteers.length} verified corporate volunteers!`,
       activityCode: event.code,
-      sentCount,
+      sentCount: volunteers.length,
     });
   } catch (error) {
     next(error);
