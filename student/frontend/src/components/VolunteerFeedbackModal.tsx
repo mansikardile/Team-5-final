@@ -58,25 +58,35 @@ export default function VolunteerFeedbackModal({
   const [submittedData, setSubmittedData] = useState<any | null>(null);
 
   useEffect(() => {
-    if (defaultActivityCode) {
-      setActivityCode(defaultActivityCode);
-    }
-    const t = localStorage.getItem('katalyst_student_token');
-    const u = localStorage.getItem('katalyst_student_user');
-    if (t && u) {
-      setToken(t);
-      try {
-        setUser(JSON.parse(u));
-        setIsOtpStep(false); // Valid token present
-      } catch (e) {
+    if (isOpen) {
+      // RESET FORM & SUBMISSION STATE WHEN MODAL OPENS
+      setSubmittedData(null);
+      setErrorMessage(null);
+      setExperience('');
+      setSuggestion('');
+      setRating(5);
+
+      if (defaultActivityCode) {
+        setActivityCode(defaultActivityCode);
+      }
+
+      const t = localStorage.getItem('katalyst_student_token');
+      const u = localStorage.getItem('katalyst_student_user');
+      if (t && u) {
+        setToken(t);
+        try {
+          setUser(JSON.parse(u));
+          setIsOtpStep(false); // Valid token present
+        } catch (e) {
+          setToken(null);
+          setUser(null);
+          setIsOtpStep(true);
+        }
+      } else {
         setToken(null);
         setUser(null);
-        setIsOtpStep(true);
+        setIsOtpStep(true); // Mandatory OTP Login Step
       }
-    } else {
-      setToken(null);
-      setUser(null);
-      setIsOtpStep(true); // Mandatory OTP Login Step
     }
 
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -92,6 +102,7 @@ export default function VolunteerFeedbackModal({
     setToken(null);
     setUser(null);
     setIsOtpStep(true);
+    setSubmittedData(null);
     setOtpSentNotice(null);
     setOtpError(null);
   };
@@ -467,10 +478,13 @@ export default function VolunteerFeedbackModal({
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto animate-bounce" />
               <h4 className="text-lg font-black text-slate-900">Feedback Submitted &amp; Verified!</h4>
               <p className="text-xs text-slate-500">
-                Your feedback has been translated by Gemini AI and saved to PostgreSQL.
+                Your feedback for <strong className="text-blue-900">{activityCode}</strong> has been translated by Gemini AI and saved to PostgreSQL.
               </p>
               <button
-                onClick={onClose}
+                onClick={() => {
+                  setSubmittedData(null);
+                  onClose();
+                }}
                 className="px-6 py-2.5 rounded-2xl bg-[#0f2b5c] text-white font-bold cursor-pointer"
               >
                 Close
