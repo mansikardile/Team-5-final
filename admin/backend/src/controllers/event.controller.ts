@@ -69,6 +69,7 @@ export const createEvent = async (
 
     // Automated Email Notification Dispatch:
     // Query corporate users/volunteers in DB or send to primary partner email
+    // Automated Email Notification Dispatch (Background Non-Blocking)
     try {
       const volunteers = await prisma.studentUser.findMany({
         take: 10,
@@ -76,27 +77,21 @@ export const createEvent = async (
       });
 
       if (volunteers.length > 0) {
-        for (const v of volunteers) {
-          await EmailService.sendEventFeedbackInvitation(v.email, v.fullName, {
+        const promises = volunteers.map((v) =>
+          EmailService.sendEventFeedbackInvitation(v.email, v.fullName, {
             code: event.code,
             title: event.title,
             partner: event.collegeName,
             location: event.location || 'Pune/Mumbai Corporate Center',
             date: new Date(event.eventDate).toLocaleDateString('en-IN'),
-          });
-        }
-      } else {
-        // Dispatch test notification to sample corporate address
-        await EmailService.sendEventFeedbackInvitation('volunteer@mastercard.com', 'Corporate Volunteer', {
-          code: event.code,
-          title: event.title,
-          partner: event.collegeName,
-          location: event.location || 'Pune/Mumbai Corporate Center',
-          date: new Date(event.eventDate).toLocaleDateString('en-IN'),
-        });
+          })
+        );
+        Promise.allSettled(promises).catch((e) =>
+          console.warn('[EventController] Email dispatch notice:', e)
+        );
       }
     } catch (emailErr: any) {
-      console.warn('[EventController] Email dispatch notification:', emailErr?.message);
+      console.warn('[EventController] Email dispatch notice:', emailErr?.message);
     }
 
     return res.status(201).json({
@@ -188,7 +183,7 @@ export const getEventByCode = async (
           },
         },
         _count: {
-          select: { leads: true, volunteerFeedbacks: true },
+          select: { volunteerFeedbacks: true },
         },
       },
     });
