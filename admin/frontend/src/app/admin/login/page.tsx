@@ -122,31 +122,6 @@ export default function SevaAdminLoginPage() {
           </p>
         </div>
 
-        {/* Unified Demo Role Shortcuts */}
-        <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-2 text-xs">
-          <span className="font-bold text-blue-950 block text-[11px] uppercase tracking-wider">
-            ⚡ Quick Auto-Fill Credentials:
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={setAdminDemo}
-              className="px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-900 font-bold hover:bg-blue-100 transition-colors text-[11px] text-left flex items-center gap-1.5 cursor-pointer"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-              <span>Admin Account</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={setSpocDemo}
-              className="px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-900 font-bold hover:bg-blue-100 transition-colors text-[11px] text-left flex items-center gap-1.5 cursor-pointer"
-            >
-              <Building2 className="w-3.5 h-3.5 text-amber-600" />
-              <span>Mastercard SPOC</span>
-            </button>
-          </div>
-        </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs">
