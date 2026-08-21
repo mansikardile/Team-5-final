@@ -254,7 +254,7 @@ export default function VolunteerActivitiesList({ onOpenCreateModal }: Volunteer
 
             <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 inline-block shadow-inner">
               <QRCodeSVG
-                value={`http://localhost:3001/feedback?activityCode=${selectedQRActivity.code}`}
+                value={`http://192.168.28.60:3001/feedback?activityCode=${selectedQRActivity.code}`}
                 size={180}
                 level="H"
                 includeMargin={true}
