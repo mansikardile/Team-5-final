@@ -14,6 +14,8 @@ import {
   Download,
   Share2,
   RefreshCw,
+  Mail,
+  Send,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { api } from '@/lib/api';
@@ -41,6 +43,9 @@ export default function VolunteerActivitiesList({ onOpenCreateModal }: Volunteer
   const [isLoading, setIsLoading] = useState(true);
   const [selectedQRActivity, setSelectedQRActivity] = useState<VolunteerActivity | null>(null);
 
+  const [dispatchingCode, setDispatchingCode] = useState<string | null>(null);
+  const [toastNotice, setToastNotice] = useState<string | null>(null);
+
   const fetchActivities = async () => {
     setIsLoading(true);
     try {
@@ -55,12 +60,41 @@ export default function VolunteerActivitiesList({ onOpenCreateModal }: Volunteer
     }
   };
 
+  const handleDispatchQrEmails = async (code: string) => {
+    setDispatchingCode(code);
+    setToastNotice(null);
+    try {
+      const res = await api.post('/spoc/dispatch-qr-emails', { activityCode: code });
+      if (res.data?.success) {
+        setToastNotice(res.data.message);
+        setTimeout(() => setToastNotice(null), 6000);
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to dispatch QR emails');
+    } finally {
+      setDispatchingCode(null);
+    }
+  };
+
   useEffect(() => {
     fetchActivities();
   }, []);
 
   return (
     <div className="space-y-6 font-sans">
+      {/* Toast Notification */}
+      {toastNotice && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-between shadow-md animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{toastNotice}</span>
+          </div>
+          <button onClick={() => setToastNotice(null)} className="text-emerald-700 hover:text-emerald-950 font-bold">
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm">
         <div>
@@ -75,7 +109,7 @@ export default function VolunteerActivitiesList({ onOpenCreateModal }: Volunteer
         <div className="flex items-center gap-3">
           <button
             onClick={fetchActivities}
-            className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
             title="Refresh Live Activities"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -173,13 +207,27 @@ export default function VolunteerActivitiesList({ onOpenCreateModal }: Volunteer
               </div>
 
               {/* Action Bar */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                 <button
                   onClick={() => setSelectedQRActivity(act)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="py-2.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <QrCode className="w-3.5 h-3.5 text-blue-600" />
                   <span>1-Min QR Code</span>
+                </button>
+
+                <button
+                  onClick={() => handleDispatchQrEmails(act.code)}
+                  disabled={dispatchingCode === act.code}
+                  className="py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 text-xs font-bold border border-blue-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Dispatch email with scannable QR Code to all registered corporate volunteers"
+                >
+                  {dispatchingCode === act.code ? (
+                    <div className="w-3.5 h-3.5 border-2 border-blue-700 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5 text-blue-700" />
+                  )}
+                  <span>📧 Dispatch QR Emails</span>
                 </button>
               </div>
             </div>
@@ -199,13 +247,12 @@ export default function VolunteerActivitiesList({ onOpenCreateModal }: Volunteer
               <h3 className="text-lg font-black text-slate-900">
                 1-Minute Feedback QR
               </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Display this at the volunteering venue. Scanning prompts login and opens the 3-field feedback form.
+              <p className="text-xs text-slate-500 font-mono mt-1">
+                {selectedQRActivity.code} • {selectedQRActivity.partner}
               </p>
             </div>
 
-            {/* QR Code Container */}
-            <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-inner">
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 inline-block shadow-inner">
               <QRCodeSVG
                 value={`http://localhost:3001/feedback?activityCode=${selectedQRActivity.code}`}
                 size={180}
@@ -214,17 +261,26 @@ export default function VolunteerActivitiesList({ onOpenCreateModal }: Volunteer
               />
             </div>
 
-            <div className="space-y-1 text-xs">
-              <strong className="text-slate-900 block font-bold">{selectedQRActivity.title}</strong>
-              <span className="font-mono text-blue-700 font-bold">{selectedQRActivity.code}</span>
-              <p className="text-[10px] text-slate-400">Partner: {selectedQRActivity.partner}</p>
+            <div className="space-y-2">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Volunteers scan this QR code with their phone camera to open the 1-minute feedback form.
+              </p>
+
+              <button
+                onClick={() => handleDispatchQrEmails(selectedQRActivity.code)}
+                disabled={dispatchingCode === selectedQRActivity.code}
+                className="w-full py-3 rounded-2xl bg-[#0f2b5c] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md hover:bg-[#091b3b] cursor-pointer"
+              >
+                <Send className="w-4 h-4 text-sky-300" />
+                <span>Dispatch QR Code Email to Registered Volunteers</span>
+              </button>
             </div>
 
             <button
               onClick={() => setSelectedQRActivity(null)}
-              className="w-full py-3 rounded-2xl bg-[#0f2b5c] text-white text-xs font-bold cursor-pointer"
+              className="w-full py-2.5 rounded-2xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200"
             >
-              Done
+              Close
             </button>
           </div>
         </div>

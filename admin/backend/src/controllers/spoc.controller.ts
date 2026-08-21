@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { GeminiService } from '../services/gemini.service.js';
+import { EmailService } from '../services/email.service.js';
 
 /**
  * Get pending volunteers for SPOC or Admin verification
@@ -82,6 +83,58 @@ export const verifyVolunteer = async (
       success: true,
       message: `Volunteer ${updated.fullName} (${updated.email}) has been ${newStatus.toLowerCase()} successfully by Corporate SPOC.`,
       data: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Admin / SPOC manually triggers dispatching QR Code feedback emails to all verified corporate volunteers
+ */
+export const dispatchEventQrEmails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { activityCode = 'SEVA-PUNE-KIT-01' } = req.body;
+
+    const event = await prisma.event.findUnique({
+      where: { code: activityCode.toUpperCase() },
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: `Activity event code '${activityCode}' not found.`,
+      });
+    }
+
+    // Fetch verified corporate volunteers
+    const volunteers = await prisma.studentUser.findMany({
+      where: { verificationStatus: 'VERIFIED' },
+      take: 20,
+    });
+
+    let sentCount = 0;
+    for (const vol of volunteers) {
+      if (vol.email) {
+        await EmailService.sendEventFeedbackInvitation(vol.email, vol.fullName, {
+          code: event.code,
+          title: event.title,
+          partner: vol.collegeName || event.collegeName || 'Mastercard India',
+          date: new Date().toLocaleDateString('en-IN'),
+        });
+        sentCount++;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `🎉 Scannable QR Code feedback emails successfully dispatched to ${sentCount} verified corporate volunteers!`,
+      activityCode: event.code,
+      sentCount,
     });
   } catch (error) {
     next(error);

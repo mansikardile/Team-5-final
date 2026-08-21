@@ -16,6 +16,7 @@ import {
   Lightbulb,
   ArrowRight,
   ShieldCheck,
+  LogOut,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -45,8 +46,8 @@ export default function VolunteerFeedbackModal({
   const [isRecordingSugg, setIsRecordingSugg] = useState(false);
   const [sttSupported, setSttSupported] = useState(false);
 
-  // OTP State
-  const [isOtpStep, setIsOtpStep] = useState(false);
+  // OTP Login State (Strict Login Enforcement)
+  const [isOtpStep, setIsOtpStep] = useState(true);
   const [emailOrPhone, setEmailOrPhone] = useState('aniket.d@mastercard.com');
   const [otpInput, setOtpInput] = useState('');
   const [otpSentNotice, setOtpSentNotice] = useState<string | null>(null);
@@ -66,10 +67,16 @@ export default function VolunteerFeedbackModal({
       setToken(t);
       try {
         setUser(JSON.parse(u));
-      } catch (e) {}
+        setIsOtpStep(false); // Valid token present
+      } catch (e) {
+        setToken(null);
+        setUser(null);
+        setIsOtpStep(true);
+      }
     } else {
       setToken(null);
       setUser(null);
+      setIsOtpStep(true); // Mandatory OTP Login Step
     }
 
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -78,6 +85,16 @@ export default function VolunteerFeedbackModal({
   }, [defaultActivityCode, isOpen]);
 
   if (!isOpen) return null;
+
+  const handleLogout = () => {
+    localStorage.removeItem('katalyst_student_token');
+    localStorage.removeItem('katalyst_student_user');
+    setToken(null);
+    setUser(null);
+    setIsOtpStep(true);
+    setOtpSentNotice(null);
+    setOtpError(null);
+  };
 
   const handleRequestOtp = async () => {
     setOtpError(null);
@@ -219,7 +236,7 @@ export default function VolunteerFeedbackModal({
 
         {/* Modal Body */}
         <div className="p-6 space-y-4 text-xs">
-          {/* MANDATORY LOGIN BARRIER IF NOT LOGGED IN */}
+          {/* STRICT MANDATORY LOGIN STEP IF NO TOKEN OR OTP STEP ACTIVE */}
           {!token || isOtpStep ? (
             <div className="text-center py-4 space-y-4 animate-fade-in">
               <div className="w-14 h-14 rounded-full bg-blue-50 text-[#0f2b5c] flex items-center justify-center mx-auto border border-blue-100 shadow-inner">
@@ -227,14 +244,14 @@ export default function VolunteerFeedbackModal({
               </div>
 
               <div className="space-y-1">
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-[10px] font-bold border border-blue-200">
+                <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-800 text-[10px] font-bold border border-rose-200">
                   Authentication Required
                 </span>
                 <h4 className="text-lg font-black text-slate-900">
-                  Log In to Submit Feedback
+                  Login via OTP to Access Feedback Form
                 </h4>
                 <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  You must be logged in as a verified corporate volunteer to submit feedback.
+                  Per SevaSahayog security policy, you must log in via OTP with your corporate email before submitting feedback.
                 </p>
               </div>
 
@@ -252,7 +269,7 @@ export default function VolunteerFeedbackModal({
 
               <div className="space-y-3 text-left">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Corporate Email or Phone *</label>
+                  <label className="font-bold text-slate-700">Corporate Email or Mobile *</label>
                   <input
                     type="text"
                     value={emailOrPhone}
@@ -276,7 +293,7 @@ export default function VolunteerFeedbackModal({
                     type="text"
                     value={otpInput}
                     onChange={(e) => setOtpInput(e.target.value)}
-                    placeholder="Enter 6-digit OTP code"
+                    placeholder="Enter 6-digit code"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white font-mono font-bold text-center text-base tracking-widest text-slate-900"
                   />
                 </div>
@@ -284,7 +301,7 @@ export default function VolunteerFeedbackModal({
                 <button
                   type="button"
                   onClick={handleVerifyOtp}
-                  className="w-full py-3.5 rounded-2xl bg-[#0f2b5c] text-white text-xs font-bold shadow-md cursor-pointer"
+                  className="w-full py-3.5 rounded-2xl bg-[#0f2b5c] text-white text-xs font-bold shadow-md cursor-pointer hover:bg-[#091b3b]"
                 >
                   Verify OTP &amp; Continue to Feedback
                 </button>
@@ -337,12 +354,23 @@ export default function VolunteerFeedbackModal({
                 </div>
               )}
 
-              {/* Logged in User Bar */}
+              {/* Logged in Volunteer Account & Switch Account Button */}
               <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between text-xs">
-                <span className="font-bold text-blue-950">
-                  Logged in as: {user?.fullName} ({user?.collegeName || 'Mastercard'})
-                </span>
-                <span className="text-[10px] font-bold text-emerald-700">✓ Verified</span>
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Authenticated Account:</span>
+                  <span className="font-bold text-blue-950">
+                    {user?.fullName} ({user?.collegeName || 'Mastercard'})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Log out and switch account"
+                >
+                  <LogOut className="w-3 h-3" />
+                  <span>Switch Account</span>
+                </button>
               </div>
 
               {/* Rating */}
